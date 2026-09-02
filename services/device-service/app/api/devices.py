@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.models.device import Device, DeviceCreate
 from app.repositories.device_repository import DeviceRepository
@@ -10,17 +10,32 @@ router = APIRouter(
     tags=["Devices"],
 )
 
+
 repository = DeviceRepository()
-service = DeviceService(repository)
+
+
+def get_repository() -> DeviceRepository:
+    return repository
+
+
+def get_device_service(
+    repository: DeviceRepository = Depends(get_repository),
+) -> DeviceService:
+    return DeviceService(repository)
 
 
 @router.get("/", response_model=list[Device])
-def get_devices():
+def get_devices(
+    service: DeviceService = Depends(get_device_service),
+):
     return service.get_devices()
 
 
 @router.get("/{device_id}", response_model=Device)
-def get_device(device_id: str):
+def get_device(
+    device_id: str,
+    service: DeviceService = Depends(get_device_service),
+):
     device = service.get_device(device_id)
 
     if device is None:
@@ -33,5 +48,8 @@ def get_device(device_id: str):
 
 
 @router.post("/", response_model=Device, status_code=201)
-def create_device(device_data: DeviceCreate):
+def create_device(
+    device_data: DeviceCreate,
+    service: DeviceService = Depends(get_device_service),
+):
     return service.create_device(device_data)
